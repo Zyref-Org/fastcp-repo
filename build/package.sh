@@ -8,6 +8,15 @@ recipe="${1:?usage: package.sh <fcp-nginx|fcp-apache|fcp-php|fcp-composer|fcp-wp
 config="${REPO}/nfpm/${recipe}.yaml"
 [ -f "${config}" ] || { echo "no recipe ${config}" >&2; exit 1; }
 
+# Packages carry a per-codename release suffix (e.g. 1.30.4-1~noble) because
+# each Ubuntu release gets its own binaries; identical filenames with
+# different contents would collide in the shared aptly publish pool.
+if [ -z "${CODENAME:-}" ]; then
+  CODENAME="$(. /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-}")"
+  CODENAME="${CODENAME:-local}"
+fi
+export CODENAME
+
 # Version defaults so recipes resolve even for a quick lint/build. Keep in
 # sync with build-all.sh and the build-*.sh scripts.
 export NGINX_VERSION="${NGINX_VERSION:-1.30.4}"
@@ -31,7 +40,7 @@ fi
 # placeholders first. Only the listed variables are substituted.
 rendered="$(mktemp)"
 trap 'rm -f "${rendered}"' EXIT
-envsubst '${ARCH} ${STAGE} ${REPO} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION}' \
+envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION}' \
   < "${config}" > "${rendered}"
 
 log "packaging ${recipe} -> ${DIST}"

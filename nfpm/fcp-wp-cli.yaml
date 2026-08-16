@@ -2,7 +2,7 @@ name: fcp-wp-cli
 arch: all
 platform: linux
 version: ${WPCLI_VERSION}
-release: 1
+release: "1~${CODENAME}"
 section: php
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"

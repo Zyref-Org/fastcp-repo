@@ -24,6 +24,10 @@ on:
       php_versions:
         description: "Space-separated PHP versions"
         default: "8.1 8.2 8.3 8.4 8.5"
+  # Fired by the fastcp-agent repo after it uploads new agent .debs to the
+  # bucket's incoming/agent/ prefix; republishing ingests them.
+  repository_dispatch:
+    types: [agent-published]
 
 permissions:
   contents: read

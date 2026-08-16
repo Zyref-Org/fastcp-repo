@@ -32,8 +32,22 @@ KEY_ID="$(gpg --list-secret-keys --with-colons "${KEY_EMAIL}" | awk -F: '/^sec:/
 [ -n "${KEY_ID}" ] || { echo "no secret key for ${KEY_EMAIL}" >&2; exit 1; }
 log "signing key ${KEY_ID}"
 
+# Pull agent .debs uploaded by the fastcp-agent repo's CI into the bucket's
+# incoming/agent/ prefix. The agent is a static binary: the same per-arch .deb
+# is added to every codename (identical checksums, so the pool dedupes it).
+AGENT_DIR="${ARTIFACTS_DIR}/agent-incoming"
+mkdir -p "${AGENT_DIR}"
+rclone copy "${REMOTE}:${BUCKET}/incoming/agent/" "${AGENT_DIR}/" 2>/dev/null \
+  || log "no incoming agent packages"
+agent_debs=$(find "${AGENT_DIR}" -name '*.deb' 2>/dev/null)
+[ -n "${agent_debs}" ] && log "ingesting agent packages:" $(basename -a ${agent_debs})
+
 for cn in ${CODENAMES}; do
-  debs=$(find "${ARTIFACTS_DIR}" -type d -name "*${cn}*" -exec find {} -name '*.deb' \; 2>/dev/null)
+  # Arch-independent packages (arch: all) are built by both per-arch runners
+  # with identical content but differing metadata timestamps; keep only the
+  # first file per name to avoid aptly pool conflicts.
+  debs=$(find "${ARTIFACTS_DIR}" -path "${AGENT_DIR}" -prune -o -type d -name "*${cn}*" -print 2>/dev/null \
+    | xargs -I{} find {} -name '*.deb' 2>/dev/null | awk -F/ '!seen[$NF]++')
   if [ -z "${debs}" ]; then
     log "no packages for ${cn}, skipping"
     continue
@@ -42,7 +56,7 @@ for cn in ${CODENAMES}; do
   aptly repo show "${repo}" >/dev/null 2>&1 || \
     aptly repo create -distribution="${cn}" -component="${COMPONENT}" "${repo}"
   # shellcheck disable=SC2086
-  aptly repo add "${repo}" ${debs}
+  aptly repo add "${repo}" ${debs} ${agent_debs}
   if aptly publish list 2>/dev/null | grep -q "${cn}"; then
     aptly publish update -gpg-key="${KEY_ID}" "${cn}"
   else
@@ -57,5 +71,7 @@ gpg --armor --export "${KEY_ID}" > "${PUBLIC_ROOT}/fastcp.gpg"
 log "exported public key"
 
 log "syncing to ${REMOTE}:${BUCKET}"
-rclone sync --checksum --transfers 24 "${PUBLIC_ROOT}/" "${REMOTE}:${BUCKET}/"
+# incoming/ is the drop-box other repos upload to; never delete it here.
+rclone sync --checksum --transfers 24 --exclude 'incoming/**' \
+  "${PUBLIC_ROOT}/" "${REMOTE}:${BUCKET}/"
 log "done. Repo served at https://repo.fastcp.io once the bucket custom domain is bound."
