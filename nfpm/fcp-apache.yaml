@@ -16,8 +16,9 @@ homepage: https://fastcp.io
 license: Proprietary
 depends:
   - libc6
-  - libapr1
-  - libaprutil1
+  - libpcre2-8-0
+  - libapr1t64 | libapr1
+  - libaprutil1t64 | libaprutil1
 contents:
   - src: ${STAGE}/opt/fcp/apache
     dst: /opt/fcp/apache

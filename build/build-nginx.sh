@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build nginx from source into the FastCP layout (/opt/fcp/nginx) and stage a
 # tuned default configuration under /etc/nginx-fcp. Run on an Ubuntu build host
-# with build-essential, libpcre3-dev, zlib1g-dev, libssl-dev installed.
+# with build-essential, libpcre2-dev, zlib1g-dev, libssl-dev installed.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 NGINX_VERSION="${NGINX_VERSION:-1.27.4}"

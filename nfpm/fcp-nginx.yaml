@@ -18,7 +18,7 @@ license: Proprietary
 depends:
   - libc6
   - zlib1g
-  - libpcre3
+  - libpcre2-8-0
 contents:
   - src: ${STAGE}/opt/fcp/nginx
     dst: /opt/fcp/nginx
