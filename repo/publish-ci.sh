@@ -71,7 +71,9 @@ gpg --armor --export "${KEY_ID}" > "${PUBLIC_ROOT}/fastcp.gpg"
 log "exported public key"
 
 log "syncing to ${REMOTE}:${BUCKET}"
-# incoming/ is the drop-box other repos upload to; never delete it here.
-rclone sync --checksum --transfers 24 --exclude 'incoming/**' \
+# incoming/ is the drop-box other repos upload to and install.sh is published
+# by the installer repo's CI; never delete either here.
+rclone sync --checksum --transfers 24 \
+  --exclude 'incoming/**' --exclude 'install.sh' \
   "${PUBLIC_ROOT}/" "${REMOTE}:${BUCKET}/"
 log "done. Repo served at https://repo.fastcp.io once the bucket custom domain is bound."
