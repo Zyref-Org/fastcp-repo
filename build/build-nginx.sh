@@ -11,6 +11,7 @@ src="${BUILD}/nginx-${NGINX_VERSION}.tar.gz"
 fetch "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" "${NGINX_SHA256}" "${src}" \
   || log "checksum not pinned: set NGINX_SHA256 for a verified build"
 
+rm -rf "${BUILD}/nginx-${NGINX_VERSION}"
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/nginx-${NGINX_VERSION}"
 

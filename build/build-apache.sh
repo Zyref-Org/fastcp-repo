@@ -14,6 +14,7 @@ fetch "https://dlcdn.apache.org/httpd/httpd-${APACHE_VERSION}.tar.gz" "${APACHE_
   "https://archive.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.gz" \
   || log "checksum not pinned: set APACHE_SHA256 for a verified build"
 
+rm -rf "${BUILD}/httpd-${APACHE_VERSION}"
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/httpd-${APACHE_VERSION}"
 

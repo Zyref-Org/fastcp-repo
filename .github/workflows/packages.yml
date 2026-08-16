@@ -60,11 +60,10 @@ jobs:
       - name: Install nfpm
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 
-      - name: Cache compiled build tree
-        uses: actions/cache@v4
-        with:
-          path: build/work
-          key: build-${{ matrix.codename }}-${{ matrix.arch }}-${{ hashFiles('build/*.sh') }}
+      # Note: the compiled tree is deliberately not cached. Sources are
+      # re-extracted every run (resetting mtimes), so a cache saves no compile
+      # time, and multi-GB cache entries get evicted/partially restored, which
+      # breaks builds with missing-source make errors.
 
       - name: Build the full stack
         env:

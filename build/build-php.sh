@@ -12,6 +12,9 @@ src="${BUILD}/php-${PHP_FULL_VERSION}.tar.gz"
 fetch "https://www.php.net/distributions/php-${PHP_FULL_VERSION}.tar.gz" "${PHP_SHA256}" "${src}" \
   || log "checksum not pinned: set PHP_SHA256 for a verified build"
 
+# Always build from a pristine tree; stale half-built trees cause missing
+# source errors from make.
+rm -rf "${BUILD}/php-${PHP_FULL_VERSION}"
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/php-${PHP_FULL_VERSION}"
 
