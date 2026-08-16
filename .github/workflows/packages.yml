@@ -114,7 +114,11 @@ jobs:
           access_key_id = ${{ secrets.R2_ACCESS_KEY_ID }}
           secret_access_key = ${{ secrets.R2_SECRET_ACCESS_KEY }}
           endpoint = ${{ secrets.R2_ENDPOINT }}
+          region = auto
           acl = private
+          # Bucket-scoped R2 tokens cannot list/create buckets; without this
+          # rclone attempts CreateBucket and R2 replies 501 NotImplemented.
+          no_check_bucket = true
           EOF
 
       - name: Publish and sync to R2
