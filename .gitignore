@@ -1,0 +1,8 @@
+# Build outputs
+/dist/
+/stage/
+/build/work/
+
+# Secrets
+.env
+*.asc

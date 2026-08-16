@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# Build a single PHP version with PHP-FPM into /opt/fcp/php/<PHP_VERSION>.
+# Example: PHP_VERSION=8.3 PHP_FULL_VERSION=8.3.14 build/build-php.sh
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+PHP_VERSION="${PHP_VERSION:?set PHP_VERSION, e.g. 8.3}"
+PHP_FULL_VERSION="${PHP_FULL_VERSION:-${PHP_VERSION}.0}"
+PHP_SHA256="${PHP_SHA256:-REPLACE_WITH_RELEASE_SHA256}"
+prefix="/opt/fcp/php/${PHP_VERSION}"
+src="${BUILD}/php-${PHP_FULL_VERSION}.tar.gz"
+
+fetch "https://www.php.net/distributions/php-${PHP_FULL_VERSION}.tar.gz" "${PHP_SHA256}" "${src}" \
+  || log "checksum placeholder: set PHP_SHA256 for a verified build"
+
+tar -C "${BUILD}" -xzf "${src}"
+cd "${BUILD}/php-${PHP_FULL_VERSION}"
+
+# Brand the build: shown as "Build Provider" in phpinfo() (PHP >= 8.0) and
+# exposed as the PHP_BUILD_PROVIDER constant on PHP >= 8.5.
+export PHP_BUILD_PROVIDER="FastCP (https://fastcp.io)"
+
+configure_flags=(
+  --prefix="${prefix}"
+  --with-config-file-path="${prefix}/etc"
+  --with-config-file-scan-dir="${prefix}/etc/conf.d"
+  --enable-fpm
+  --with-fpm-user=www-data
+  --with-fpm-group=www-data
+  --enable-opcache
+
+  # Core web extensions.
+  --enable-mbstring
+  --with-openssl
+  --with-zlib
+  --with-curl
+  --with-pdo-mysql
+  --with-mysqli
+  --enable-intl
+  --with-zip
+
+  # Image handling (WordPress media requires gd; exif for image metadata).
+  --enable-gd
+  --with-jpeg
+  --with-webp
+  --with-freetype
+  --enable-exif
+
+  # Common application/library requirements (WooCommerce, SDKs, CMSes).
+  --enable-bcmath
+  --enable-soap
+  --enable-sockets
+  --with-xsl
+  --with-gmp
+  --with-sodium
+  --with-gettext
+  --enable-calendar
+  --enable-ftp
+
+  # CLI/worker support (wp-cli, queue workers) and SysV IPC parity with
+  # Ubuntu's stock php-common set.
+  --enable-pcntl
+  --enable-shmop
+  --enable-sysvsem
+  --enable-sysvshm
+  --enable-sysvmsg
+)
+
+./configure "${configure_flags[@]}"
+
+make -j"${JOBS}"
+make install INSTALL_ROOT="${STAGE}"
+
+# Stage FPM master config; per-app pools are dropped into pool.d by the agent,
+# extra extension/ini snippets go into conf.d (scanned at startup).
+install -d "${STAGE}${prefix}/etc/pool.d" "${STAGE}${prefix}/etc/conf.d"
+cat > "${STAGE}${prefix}/etc/php-fpm.conf" <<CONF
+[global]
+pid = /run/fcp/php-fpm-${PHP_VERSION}.pid
+error_log = /var/log/fcp/php${PHP_VERSION}-fpm.log
+daemonize = no
+include = ${prefix}/etc/pool.d/*.conf
+CONF
+
+# A secure, tuned default php.ini.
+cat > "${STAGE}${prefix}/etc/php.ini" <<'CONF'
+; FastCP PHP build (https://fastcp.io)
+expose_php = Off
+display_errors = Off
+log_errors = On
+allow_url_fopen = Off
+allow_url_include = Off
+memory_limit = 256M
+upload_max_filesize = 64M
+post_max_size = 64M
+date.timezone = UTC
+realpath_cache_size = 4096k
+realpath_cache_ttl = 120
+CONF
+
+# OPcache is compiled in statically; tune it via a conf.d drop-in so users see
+# the pattern for adding their own extension/ini snippets.
+cat > "${STAGE}${prefix}/etc/conf.d/10-opcache.ini" <<'CONF'
+; FastCP defaults for OPcache. Drop additional .ini files in this directory to
+; load extra extensions (extension=/zend_extension=) or override settings.
+opcache.enable = 1
+opcache.enable_cli = 0
+opcache.memory_consumption = 192
+opcache.interned_strings_buffer = 16
+opcache.max_accelerated_files = 20000
+opcache.validate_timestamps = 1
+opcache.revalidate_freq = 2
+CONF
+
+log "php ${PHP_FULL_VERSION} staged under ${STAGE}${prefix}"
+log "package with: PHP_VERSION=${PHP_VERSION} PHP_FULL_VERSION=${PHP_FULL_VERSION} STAGE=${STAGE} REPO=${REPO} ${REPO}/build/package.sh fcp-php"

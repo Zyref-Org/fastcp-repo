@@ -1,0 +1,34 @@
+name: fcp-apache
+arch: ${ARCH}
+platform: linux
+version: ${APACHE_VERSION}
+release: 1
+section: httpd
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  FastCP Apache, a customized, optimized build by FastCP: the internal
+  application server (listens on 127.0.0.1:81) behind the FastCP nginx reverse
+  proxy, executing PHP via each app's PHP-FPM socket with full .htaccess
+  support. Built from upstream source into /opt/fcp/apache.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends:
+  - libc6
+  - libapr1
+  - libaprutil1
+contents:
+  - src: ${STAGE}/opt/fcp/apache
+    dst: /opt/fcp/apache
+    type: tree
+  - src: ${STAGE}/etc/apache-fcp
+    dst: /etc/apache-fcp
+    type: tree
+    file_info:
+      mode: 0755
+  - src: ${REPO}/systemd/fcp-apache.service
+    dst: /etc/systemd/system/fcp-apache.service
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-apache.sh
+  preremove: ${REPO}/scripts/preremove-apache.sh

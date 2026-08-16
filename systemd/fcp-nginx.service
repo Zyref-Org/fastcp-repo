@@ -1,0 +1,16 @@
+[Unit]
+Description=FastCP nginx (public web server / reverse proxy)
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/run/fcp/nginx.pid
+LimitNOFILE=65535
+ExecStartPre=/opt/fcp/nginx/sbin/nginx -t -c /etc/nginx-fcp/nginx.conf
+ExecStart=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf
+ExecReload=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf -s reload
+ExecStop=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf -s quit
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

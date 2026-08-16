@@ -1,0 +1,20 @@
+name: fcp-composer
+arch: all
+platform: linux
+version: ${COMPOSER_VERSION}
+release: 1
+section: php
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  Composer dependency manager for FastCP PHP apps, installed to /opt/fcp/bin.
+  Packaged by FastCP.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends: []
+contents:
+  - src: ${STAGE}/opt/fcp/bin/composer
+    dst: /opt/fcp/bin/composer
+    file_info:
+      mode: 0755

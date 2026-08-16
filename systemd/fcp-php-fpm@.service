@@ -1,0 +1,18 @@
+# Templated PHP-FPM unit. Instance name is the PHP version, e.g.
+#   systemctl start fcp-php-fpm@8.3
+# The agent reloads a specific version with: systemctl reload fcp-php8.3-fpm
+# (an alias symlink to this template is created by the package postinstall).
+[Unit]
+Description=FastCP PHP-FPM %i
+After=network.target
+
+[Service]
+Type=notify
+PIDFile=/run/fcp/php-fpm-%i.pid
+LimitNOFILE=65535
+ExecStart=/opt/fcp/php/%i/sbin/php-fpm --nodaemonize --fpm-config /opt/fcp/php/%i/etc/php-fpm.conf
+ExecReload=/bin/kill -USR2 $MAINPID
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

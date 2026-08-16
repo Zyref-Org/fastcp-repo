@@ -1,0 +1,16 @@
+[Unit]
+Description=FastCP Apache (internal application server on 127.0.0.1:81)
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/run/fcp/apache.pid
+Environment=APACHE_RUN_DIR=/run/fcp
+LimitNOFILE=65535
+ExecStart=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k start
+ExecReload=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k graceful
+ExecStop=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k stop
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

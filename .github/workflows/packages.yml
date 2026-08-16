@@ -1,0 +1,123 @@
+name: build-and-publish-packages
+
+# Builds the FastCP web stack (nginx, apache, PHP-FPM 8.1-8.5, composer,
+# wp-cli, php-cli) for each supported Ubuntu LTS and architecture, then signs
+# and syncs the APT repository to Cloudflare R2. The fastcp-agent package is
+# built and published by the agent's own repository.
+#
+# Each (codename, arch) is built on a native runner of that exact OS/arch so the
+# packages link against the correct system libraries.
+#
+# Required repository secrets:
+#   FCP_GPG_PRIVATE_KEY   armored GPG private key used to sign the repo
+#   FCP_GPG_EMAIL         identity of that key (e.g. ops@fastcp.io)
+#   R2_ACCESS_KEY_ID      Cloudflare R2 S3 access key id
+#   R2_SECRET_ACCESS_KEY  Cloudflare R2 S3 secret
+#   R2_ENDPOINT           https://<accountid>.r2.cloudflarestorage.com
+#   R2_BUCKET             target bucket name (e.g. fastcp-repo)
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      php_versions:
+        description: "Space-separated PHP versions"
+        default: "8.1 8.2 8.3 8.4 8.5"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build ${{ matrix.codename }}/${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { codename: jammy, arch: amd64, runner: ubuntu-22.04 }
+          - { codename: jammy, arch: arm64, runner: ubuntu-22.04-arm }
+          - { codename: noble, arch: amd64, runner: ubuntu-24.04 }
+          - { codename: noble, arch: arm64, runner: ubuntu-24.04-arm }
+          # Ubuntu 26.04 LTS; runners are in public preview.
+          - { codename: resolute, arch: amd64, runner: ubuntu-26.04 }
+          - { codename: resolute, arch: arm64, runner: ubuntu-26.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: bash build/install-build-deps.sh
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install nfpm
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+
+      - name: Cache compiled build tree
+        uses: actions/cache@v4
+        with:
+          path: build/work
+          key: build-${{ matrix.codename }}-${{ matrix.arch }}-${{ hashFiles('build/*.sh') }}
+
+      - name: Build the full stack
+        env:
+          PHP_VERSIONS: ${{ github.event.inputs.php_versions || '8.1 8.2 8.3 8.4 8.5' }}
+        run: |
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          bash build/build-all.sh
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.codename }}-${{ matrix.arch }}
+          path: dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: sign and publish to R2
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install aptly, rclone, gnupg
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y aptly rclone gnupg
+
+      - name: Download all built packages
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Import signing key
+        env:
+          FCP_GPG_PRIVATE_KEY: ${{ secrets.FCP_GPG_PRIVATE_KEY }}
+        run: |
+          printf '%s' "$FCP_GPG_PRIVATE_KEY" | gpg --batch --import
+
+      - name: Configure rclone for R2
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf <<EOF
+          [r2]
+          type = s3
+          provider = Cloudflare
+          access_key_id = ${{ secrets.R2_ACCESS_KEY_ID }}
+          secret_access_key = ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          endpoint = ${{ secrets.R2_ENDPOINT }}
+          acl = private
+          EOF
+
+      - name: Publish and sync to R2
+        env:
+          ARTIFACTS_DIR: artifacts
+          CODENAMES: "jammy noble resolute"
+          FCP_GPG_EMAIL: ${{ secrets.FCP_GPG_EMAIL }}
+          FCP_R2_REMOTE: r2
+          FCP_R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: bash repo/publish-ci.sh

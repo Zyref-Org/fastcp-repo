@@ -1,0 +1,47 @@
+# Templated per PHP version. Build with:
+#   PHP_VERSION=8.3 build/build-php.sh
+#   PHP_VERSION=8.3 STAGE=... REPO=... nfpm pkg -f this
+# Produces package fcp-php8.3 installing PHP-FPM under /opt/fcp/php/8.3.
+name: fcp-php${PHP_VERSION}
+arch: ${ARCH}
+platform: linux
+version: ${PHP_FULL_VERSION}
+release: 1
+section: php
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  FastCP PHP ${PHP_VERSION} (PHP-FPM), a customized, optimized build by FastCP.
+  Co-installable alongside other versions under /opt/fcp/php/${PHP_VERSION}
+  with the common extension set (gd, intl, bcmath, soap, exif, sodium, ...)
+  compiled in. Hardened defaults; not on the system PATH.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+# Runtime shared libraries. Alternations cover Ubuntu 24.04's time_t64 package
+# renames (t64 name first); verify names when adding a new codename.
+depends:
+  - libc6
+  - libxml2
+  - libsqlite3-0
+  - libssl3t64 | libssl3
+  - libcurl4t64 | libcurl4
+  - libonig5
+  - libzip4t64 | libzip4
+  - libicu76 | libicu74 | libicu72 | libicu70
+  - libpng16-16t64 | libpng16-16
+  - libjpeg-turbo8t64 | libjpeg-turbo8
+  - libwebp7
+  - libfreetype6
+  - libxslt1.1
+  - libsodium23
+  - libgmp10
+contents:
+  - src: ${STAGE}/opt/fcp/php/${PHP_VERSION}
+    dst: /opt/fcp/php/${PHP_VERSION}
+    type: tree
+  - src: ${REPO}/systemd/fcp-php-fpm@.service
+    dst: /etc/systemd/system/fcp-php-fpm@.service
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-php.sh
+  preremove: ${REPO}/scripts/preremove-php.sh

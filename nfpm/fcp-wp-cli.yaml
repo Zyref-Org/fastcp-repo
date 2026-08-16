@@ -1,0 +1,20 @@
+name: fcp-wp-cli
+arch: all
+platform: linux
+version: ${WPCLI_VERSION}
+release: 1
+section: php
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  WP-CLI for managing WordPress on FastCP apps, installed to /opt/fcp/bin.
+  Packaged by FastCP.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends: []
+contents:
+  - src: ${STAGE}/opt/fcp/bin/wp
+    dst: /opt/fcp/bin/wp
+    file_info:
+      mode: 0755

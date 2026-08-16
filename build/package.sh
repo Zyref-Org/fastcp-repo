@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Build a .deb from a staged tree using nfpm. Usage: package.sh <recipe-name>
+# where recipe-name is one of: fcp-nginx fcp-apache fcp-php fcp-composer
+# fcp-wp-cli fcp-php-cli.
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+recipe="${1:?usage: package.sh <fcp-nginx|fcp-apache|fcp-php|fcp-composer|fcp-wp-cli|fcp-php-cli>}"
+config="${REPO}/nfpm/${recipe}.yaml"
+[ -f "${config}" ] || { echo "no recipe ${config}" >&2; exit 1; }
+
+# Version defaults so recipes resolve even for a quick lint/build.
+export NGINX_VERSION="${NGINX_VERSION:-1.27.4}"
+export APACHE_VERSION="${APACHE_VERSION:-2.4.63}"
+export PHP_VERSION="${PHP_VERSION:-8.3}"
+export PHP_FULL_VERSION="${PHP_FULL_VERSION:-8.3.14}"
+export COMPOSER_VERSION="${COMPOSER_VERSION:-2.8.0}"
+export WPCLI_VERSION="${WPCLI_VERSION:-2.11.0}"
+export PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}"
+
+if ! command -v nfpm >/dev/null 2>&1; then
+  echo "nfpm not found; run build/bootstrap-tools.sh" >&2
+  exit 1
+fi
+if ! command -v envsubst >/dev/null 2>&1; then
+  echo "envsubst not found (apt: gettext-base, brew: gettext)" >&2
+  exit 1
+fi
+
+# nfpm does not expand env vars in its config, so render the ${VAR}
+# placeholders first. Only the listed variables are substituted.
+rendered="$(mktemp)"
+trap 'rm -f "${rendered}"' EXIT
+envsubst '${ARCH} ${STAGE} ${REPO} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION}' \
+  < "${config}" > "${rendered}"
+
+log "packaging ${recipe} -> ${DIST}"
+nfpm package --config "${rendered}" --packager deb --target "${DIST}/"
+log "done: $(ls -1 "${DIST}"/*.deb 2>/dev/null | tail -n1)"

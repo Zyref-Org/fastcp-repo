@@ -1,0 +1,24 @@
+# Provides the default `php` CLI on PATH, pointing at a chosen fcp PHP version.
+# The postinstall links /opt/fcp/bin/php to the highest installed version.
+name: fcp-php-cli
+arch: all
+platform: linux
+version: ${PHPCLI_VERSION}
+release: 1
+section: php
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  Default PHP CLI wrapper for FastCP, exposing `php` from /opt/fcp/bin.
+  Packaged by FastCP.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends: []
+contents:
+  - src: ${REPO}/scripts/fcp-php-cli-wrapper.sh
+    dst: /opt/fcp/bin/php
+    file_info:
+      mode: 0755
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-php-cli.sh

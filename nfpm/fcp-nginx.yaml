@@ -1,0 +1,35 @@
+# nfpm recipe for the FastCP nginx package. Build the staged tree first with
+# build/build-nginx.sh, then: STAGE=... REPO=... nfpm pkg -f this.
+name: fcp-nginx
+arch: ${ARCH}
+platform: linux
+version: ${NGINX_VERSION}
+release: 1
+section: httpd
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  FastCP nginx, a customized, optimized build by FastCP: the public-facing web
+  server and reverse proxy to Apache, with HTTP/2, HTTP/3 (QUIC) and tuned
+  defaults. Independently built from upstream source into /opt/fcp/nginx.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends:
+  - libc6
+  - zlib1g
+  - libpcre3
+contents:
+  - src: ${STAGE}/opt/fcp/nginx
+    dst: /opt/fcp/nginx
+    type: tree
+  - src: ${STAGE}/etc/nginx-fcp
+    dst: /etc/nginx-fcp
+    type: tree
+    file_info:
+      mode: 0755
+  - src: ${REPO}/systemd/fcp-nginx.service
+    dst: /etc/systemd/system/fcp-nginx.service
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-nginx.sh
+  preremove: ${REPO}/scripts/preremove-nginx.sh
