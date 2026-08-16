@@ -3,7 +3,7 @@
 # The agent reloads a specific version via `systemctl reload fcp-php<ver>-fpm`,
 # so we create that alias symlink to the templated instance unit.
 set -e
-install -d -m 0755 /run/fcp
+install -d -m 0755 /run/fcp /var/log/fcp
 systemctl daemon-reload || true
 for dir in /opt/fcp/php/*/; do
   [ -d "$dir" ] || continue

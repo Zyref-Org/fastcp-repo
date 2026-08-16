@@ -29,6 +29,8 @@ configure_flags=(
   --enable-fpm
   --with-fpm-user=www-data
   --with-fpm-group=www-data
+  # systemd readiness notification; the unit uses Type=notify.
+  --with-fpm-systemd
   --enable-opcache
 
   # Core web extensions.
@@ -98,6 +100,21 @@ post_max_size = 64M
 date.timezone = UTC
 realpath_cache_size = 4096k
 realpath_cache_ttl = 120
+CONF
+
+# A placeholder pool so PHP-FPM starts before any apps exist; real per-app
+# pools are dropped into pool.d by the agent.
+cat > "${STAGE}${prefix}/etc/pool.d/000-default.conf" <<CONF
+[default]
+user = www-data
+group = www-data
+listen = /run/fcp/php${PHP_VERSION}-default.sock
+listen.owner = www-data
+listen.group = www-data
+listen.mode = 0660
+pm = ondemand
+pm.max_children = 2
+pm.process_idle_timeout = 10s
 CONF
 
 # OPcache is compiled in statically; tune it via a conf.d drop-in so users see

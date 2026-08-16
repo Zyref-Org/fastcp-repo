@@ -43,6 +43,9 @@ log "building apache"
 "${REPO}/build/build-apache.sh"
 "${REPO}/build/package.sh" fcp-apache
 
+log "packaging fcp-php-common"
+PHPCOMMON_VERSION="${PHPCOMMON_VERSION:-1.0.0}" "${REPO}/build/package.sh" fcp-php-common
+
 for v in ${PHP_VERSIONS}; do
   full="${PHP_FULL[$v]:-${v}.0}"
   # The pinned checksum only applies to the default version; overridden

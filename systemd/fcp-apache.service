@@ -6,6 +6,9 @@ After=network.target
 Type=forking
 PIDFile=/run/fcp/apache.pid
 Environment=APACHE_RUN_DIR=/run/fcp
+RuntimeDirectory=fcp
+RuntimeDirectoryPreserve=yes
+LogsDirectory=fcp
 LimitNOFILE=65535
 ExecStart=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k start
 ExecReload=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k graceful

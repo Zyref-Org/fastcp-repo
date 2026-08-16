@@ -6,7 +6,7 @@ name: fcp-php${PHP_VERSION}
 arch: ${ARCH}
 platform: linux
 version: ${PHP_FULL_VERSION}
-release: "1~${CODENAME}"
+release: "2~${CODENAME}"
 section: php
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"
@@ -21,9 +21,11 @@ license: Proprietary
 # Runtime shared libraries. Alternations cover Ubuntu 24.04's time_t64 package
 # renames (t64 name first); verify names when adding a new codename.
 depends:
+  - fcp-php-common
   - libc6
   - libxml2
   - libsqlite3-0
+  - libsystemd0
   - libssl3t64 | libssl3
   - libcurl4t64 | libcurl4
   - libonig5
@@ -40,8 +42,6 @@ contents:
   - src: ${STAGE}/opt/fcp/php/${PHP_VERSION}
     dst: /opt/fcp/php/${PHP_VERSION}
     type: tree
-  - src: ${REPO}/systemd/fcp-php-fpm@.service
-    dst: /etc/systemd/system/fcp-php-fpm@.service
 scripts:
   postinstall: ${REPO}/scripts/postinstall-php.sh
   preremove: ${REPO}/scripts/preremove-php.sh

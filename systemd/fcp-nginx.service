@@ -5,6 +5,9 @@ After=network.target
 [Service]
 Type=forking
 PIDFile=/run/fcp/nginx.pid
+RuntimeDirectory=fcp
+RuntimeDirectoryPreserve=yes
+LogsDirectory=fcp
 LimitNOFILE=65535
 ExecStartPre=/opt/fcp/nginx/sbin/nginx -t -c /etc/nginx-fcp/nginx.conf
 ExecStart=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf

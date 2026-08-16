@@ -12,7 +12,7 @@ sudo apt-get install -y --no-install-recommends \
   libxml2-dev libsqlite3-dev libcurl4-openssl-dev libonig-dev libzip-dev \
   libapr1-dev libaprutil1-dev libicu-dev \
   libpng-dev libjpeg-dev libwebp-dev libfreetype-dev \
-  libxslt1-dev libsodium-dev libgmp-dev \
+  libxslt1-dev libsodium-dev libgmp-dev libsystemd-dev \
   ccache
 
 echo "build deps installed"

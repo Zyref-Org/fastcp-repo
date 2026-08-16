@@ -4,7 +4,7 @@ name: fcp-php-cli
 arch: all
 platform: linux
 version: ${PHPCLI_VERSION}
-release: "1~${CODENAME}"
+release: "2~${CODENAME}"
 section: php
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"

@@ -2,7 +2,7 @@ name: fcp-apache
 arch: ${ARCH}
 platform: linux
 version: ${APACHE_VERSION}
-release: "1~${CODENAME}"
+release: "2~${CODENAME}"
 section: httpd
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"

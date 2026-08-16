@@ -26,6 +26,7 @@ export PHP_FULL_VERSION="${PHP_FULL_VERSION:-8.3.33}"
 export COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}"
 export WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}"
 export PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}"
+export PHPCOMMON_VERSION="${PHPCOMMON_VERSION:-1.0.0}"
 
 if ! command -v nfpm >/dev/null 2>&1; then
   echo "nfpm not found; run build/bootstrap-tools.sh" >&2
@@ -40,7 +41,7 @@ fi
 # placeholders first. Only the listed variables are substituted.
 rendered="$(mktemp)"
 trap 'rm -f "${rendered}"' EXIT
-envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION}' \
+envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION} ${PHPCOMMON_VERSION}' \
   < "${config}" > "${rendered}"
 
 log "packaging ${recipe} -> ${DIST}"

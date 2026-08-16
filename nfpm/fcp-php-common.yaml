@@ -1,0 +1,22 @@
+# Shared bits for all fcp-php<ver> packages: the templated PHP-FPM systemd
+# unit. Owned by one package because dpkg forbids the same path in multiple
+# packages (the per-version packages depend on this one).
+name: fcp-php-common
+arch: all
+platform: linux
+version: ${PHPCOMMON_VERSION}
+release: "2~${CODENAME}"
+section: php
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  Shared systemd template unit for FastCP PHP-FPM versions. Packaged by FastCP.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends: []
+contents:
+  - src: ${REPO}/systemd/fcp-php-fpm@.service
+    dst: /etc/systemd/system/fcp-php-fpm@.service
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-php-common.sh

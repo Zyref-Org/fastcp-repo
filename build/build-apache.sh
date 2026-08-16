@@ -53,8 +53,7 @@ Listen 127.0.0.1:81
 ServerName localhost
 PidFile /run/fcp/apache.pid
 
-# --- Modules ---
-LoadModule mpm_event_module modules/mod_mpm_event.so
+# --- Modules (the event MPM is compiled in statically) ---
 LoadModule unixd_module modules/mod_unixd.so
 LoadModule authn_core_module modules/mod_authn_core.so
 LoadModule authn_file_module modules/mod_authn_file.so
@@ -124,7 +123,7 @@ HostnameLookups Off
 
 # --- Defaults ---
 DirectoryIndex index.php index.html
-TypesConfig conf/mime.types
+TypesConfig /etc/apache-fcp/mime.types
 EnableSendfile On
 
 ErrorLog /var/log/fcp/apache-error.log

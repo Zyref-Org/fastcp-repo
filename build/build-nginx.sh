@@ -59,7 +59,8 @@ events {
 }
 
 http {
-    include       /opt/fcp/nginx/conf/mime.types;
+    # make install places support files next to the conf (--conf-path).
+    include       /etc/nginx-fcp/mime.types;
     default_type  application/octet-stream;
 
     # -- Core performance --
