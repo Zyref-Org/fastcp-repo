@@ -4,12 +4,12 @@
 # with build-essential, libpcre2-dev, zlib1g-dev, libssl-dev installed.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-NGINX_VERSION="${NGINX_VERSION:-1.27.4}"
-NGINX_SHA256="${NGINX_SHA256:-REPLACE_WITH_RELEASE_SHA256}"
+NGINX_VERSION="${NGINX_VERSION:-1.30.4}"
+NGINX_SHA256="${NGINX_SHA256:-4261dc90e9e47c1c4041276e9aaa3d48ebe2e664f728e14fa95ae6c67d57a08b}"
 src="${BUILD}/nginx-${NGINX_VERSION}.tar.gz"
 
 fetch "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" "${NGINX_SHA256}" "${src}" \
-  || log "checksum placeholder: set NGINX_SHA256 for a verified build"
+  || log "checksum not pinned: set NGINX_SHA256 for a verified build"
 
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/nginx-${NGINX_VERSION}"

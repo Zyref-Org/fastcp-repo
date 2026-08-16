@@ -10,7 +10,7 @@ prefix="/opt/fcp/php/${PHP_VERSION}"
 src="${BUILD}/php-${PHP_FULL_VERSION}.tar.gz"
 
 fetch "https://www.php.net/distributions/php-${PHP_FULL_VERSION}.tar.gz" "${PHP_SHA256}" "${src}" \
-  || log "checksum placeholder: set PHP_SHA256 for a verified build"
+  || log "checksum not pinned: set PHP_SHA256 for a verified build"
 
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/php-${PHP_FULL_VERSION}"

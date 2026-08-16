@@ -8,13 +8,14 @@ recipe="${1:?usage: package.sh <fcp-nginx|fcp-apache|fcp-php|fcp-composer|fcp-wp
 config="${REPO}/nfpm/${recipe}.yaml"
 [ -f "${config}" ] || { echo "no recipe ${config}" >&2; exit 1; }
 
-# Version defaults so recipes resolve even for a quick lint/build.
-export NGINX_VERSION="${NGINX_VERSION:-1.27.4}"
-export APACHE_VERSION="${APACHE_VERSION:-2.4.63}"
+# Version defaults so recipes resolve even for a quick lint/build. Keep in
+# sync with build-all.sh and the build-*.sh scripts.
+export NGINX_VERSION="${NGINX_VERSION:-1.30.4}"
+export APACHE_VERSION="${APACHE_VERSION:-2.4.68}"
 export PHP_VERSION="${PHP_VERSION:-8.3}"
-export PHP_FULL_VERSION="${PHP_FULL_VERSION:-8.3.14}"
-export COMPOSER_VERSION="${COMPOSER_VERSION:-2.8.0}"
-export WPCLI_VERSION="${WPCLI_VERSION:-2.11.0}"
+export PHP_FULL_VERSION="${PHP_FULL_VERSION:-8.3.33}"
+export COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}"
+export WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}"
 export PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}"
 
 if ! command -v nfpm >/dev/null 2>&1; then

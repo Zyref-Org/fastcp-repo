@@ -4,12 +4,15 @@
 # fully supports .htaccess behind the FastCP nginx reverse proxy.
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-APACHE_VERSION="${APACHE_VERSION:-2.4.63}"
-APACHE_SHA256="${APACHE_SHA256:-REPLACE_WITH_RELEASE_SHA256}"
+APACHE_VERSION="${APACHE_VERSION:-2.4.68}"
+APACHE_SHA256="${APACHE_SHA256:-ed9a9d4500fb48bb28eaffb3ba71d06ccf86d498fa13ab9f781da010cc488498}"
 src="${BUILD}/httpd-${APACHE_VERSION}.tar.gz"
 
+# dlcdn.apache.org only hosts the current release; superseded releases move
+# to archive.apache.org, hence the fallback URL.
 fetch "https://dlcdn.apache.org/httpd/httpd-${APACHE_VERSION}.tar.gz" "${APACHE_SHA256}" "${src}" \
-  || log "checksum placeholder: set APACHE_SHA256 for a verified build"
+  "https://archive.apache.org/dist/httpd/httpd-${APACHE_VERSION}.tar.gz" \
+  || log "checksum not pinned: set APACHE_SHA256 for a verified build"
 
 tar -C "${BUILD}" -xzf "${src}"
 cd "${BUILD}/httpd-${APACHE_VERSION}"
