@@ -100,6 +100,10 @@ post_max_size = 64M
 date.timezone = UTC
 realpath_cache_size = 4096k
 realpath_cache_ttl = 120
+; DB host "localhost" means the MySQL unix socket; point mysqlnd at Ubuntu's
+; socket path (the compiled-in default is wrong for this layout).
+mysqli.default_socket = /var/run/mysqld/mysqld.sock
+pdo_mysql.default_socket = /var/run/mysqld/mysqld.sock
 CONF
 
 # A placeholder pool so PHP-FPM starts before any apps exist; real per-app
