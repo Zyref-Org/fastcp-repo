@@ -5,7 +5,7 @@ name: fcp-php-common
 arch: all
 platform: linux
 version: ${PHPCOMMON_VERSION}
-release: "2~${CODENAME}"
+release: "3~${CODENAME}"
 section: php
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"

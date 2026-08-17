@@ -2,7 +2,7 @@ name: fcp-composer
 arch: all
 platform: linux
 version: ${COMPOSER_VERSION}
-release: "2~${CODENAME}"
+release: "3~${CODENAME}"
 section: php
 priority: optional
 maintainer: "FastCP <ops@fastcp.io>"

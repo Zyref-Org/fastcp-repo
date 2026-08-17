@@ -46,10 +46,23 @@ auto_deps() {
     echo "libc6" # local lint builds on non-Debian hosts
     return
   fi
-  local out
-  out=$(find "$@" -type f \( -perm -u+x -o -name '*.so*' \) 2>/dev/null \
-    | while read -r bin; do ldd "${bin}" 2>/dev/null | awk '/=> \//{print $3}'; done \
-    | sort -u \
+  local links missing out
+  links=$(find "$@" -type f \( -perm -u+x -o -name '*.so*' \) 2>/dev/null \
+    | while read -r bin; do ldd "${bin}" 2>/dev/null || true; done)
+  # A library the linker cannot resolve would ship a package that is broken
+  # at runtime (fcp-php 0.1.3 shipped without a libzip dependency this way).
+  missing=$(printf '%s\n' "${links}" | grep 'not found' | sort -u || true)
+  if [ -n "${missing}" ]; then
+    printf 'auto_deps: unresolved shared libraries on the build host:\n%s\n' "${missing}" >&2
+    exit 1
+  fi
+  # ldd reports usr-merge alias paths (/lib/...) and ldconfig-created .so.N
+  # symlinks; dpkg's file database records /usr/lib/... real files, so a raw
+  # `dpkg -S` on ldd output matches nothing. realpath resolves both. Libraries
+  # staged under /opt/fcp ship inside our own packages and need no dependency.
+  out=$(printf '%s\n' "${links}" | awk '/=> \//{print $3}' | sort -u \
+    | while read -r lib; do realpath "${lib}" 2>/dev/null || true; done \
+    | sort -u | grep -v '^/opt/fcp/' \
     | xargs -r dpkg -S 2>/dev/null \
     | cut -d: -f1 | sort -u | paste -sd, - | sed 's/,/, /g')
   echo "${out:-libc6}"
@@ -63,6 +76,19 @@ case "${recipe}" in
 esac
 export FCP_AUTO_DEPS
 log "computed deps for ${recipe}: ${FCP_AUTO_DEPS}"
+
+# Compiled servers link against far more than libc; a near-empty result means
+# dependency resolution regressed (see auto_deps), which previously shipped
+# packages whose services could not start. Refuse to package.
+case "${recipe}" in
+  fcp-nginx|fcp-apache|fcp-php)
+    dep_count=$(printf '%s' "${FCP_AUTO_DEPS}" | tr ',' '\n' | wc -l | tr -d ' ')
+    if [ "${dep_count}" -lt 3 ]; then
+      echo "auto_deps computed implausibly few dependencies for ${recipe}: ${FCP_AUTO_DEPS}" >&2
+      exit 1
+    fi
+    ;;
+esac
 
 # nfpm does not expand env vars in its config, so render the ${VAR}
 # placeholders first. Only the listed variables are substituted.

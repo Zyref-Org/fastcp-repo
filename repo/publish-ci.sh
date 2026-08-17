@@ -92,9 +92,34 @@ gpg --armor --export "${KEY_ID}" > "${PUBLIC_ROOT}/fastcp.gpg"
 log "exported public key"
 
 log "syncing to ${REMOTE}:${BUCKET}"
-# incoming/ is the drop-box other repos upload to and install.sh is published
-# by the installer repo's CI; never delete either here.
+# The bucket is fronted by Cloudflare (repo.fastcp.io), which edge-caches
+# objects for hours by default, and rclone uploads in arbitrary order. Both
+# broke installs on 2026-08-17: apt fetched a fresh Release next to an
+# hours-stale cached Packages.bz2 ("File has unexpected size"). So:
+#   1. pool/ additions first — a package must exist before an index cites it.
+#      Pool filenames are version-unique, so long edge caching is safe.
+#   2. dists/ indexes next, uploaded with Cache-Control: no-cache so CDN
+#      edges revalidate metadata instead of serving stale copies. The
+#      per-dist Release/InRelease files are held back...
+#   3. ...and uploaded last: a client only sees a new Release once every
+#      index it references is already in place.
+#   4. Old pool files are pruned only after the new metadata is live.
+# incoming/ (drop-box other repos upload into) and install.sh (published by
+# the installer repo's CI) live outside pool/ and dists/ and are untouched.
+rclone copy --checksum --transfers 24 \
+  --header-upload "Cache-Control: public, max-age=86400" \
+  "${PUBLIC_ROOT}/pool/" "${REMOTE}:${BUCKET}/pool/"
 rclone sync --checksum --transfers 24 \
-  --exclude 'incoming/**' --exclude 'install.sh' \
-  "${PUBLIC_ROOT}/" "${REMOTE}:${BUCKET}/"
+  --header-upload "Cache-Control: no-cache" \
+  --exclude '/*/Release' --exclude '/*/Release.gpg' --exclude '/*/InRelease' \
+  "${PUBLIC_ROOT}/dists/" "${REMOTE}:${BUCKET}/dists/"
+rclone copy --checksum --transfers 24 \
+  --header-upload "Cache-Control: no-cache" \
+  --include '/*/Release' --include '/*/Release.gpg' --include '/*/InRelease' \
+  "${PUBLIC_ROOT}/dists/" "${REMOTE}:${BUCKET}/dists/"
+rclone copyto --checksum --header-upload "Cache-Control: no-cache" \
+  "${PUBLIC_ROOT}/fastcp.gpg" "${REMOTE}:${BUCKET}/fastcp.gpg"
+rclone sync --checksum --transfers 24 --delete-after \
+  --header-upload "Cache-Control: public, max-age=86400" \
+  "${PUBLIC_ROOT}/pool/" "${REMOTE}:${BUCKET}/pool/"
 log "done. Repo served at https://repo.fastcp.io once the bucket custom domain is bound."
