@@ -15,10 +15,9 @@ description: |
 vendor: FastCP
 homepage: https://fastcp.io
 license: Proprietary
+# Computed at package time from the built binary (build/package.sh).
 depends:
-  - libc6
-  - zlib1g
-  - libpcre2-8-0
+  - ${FCP_AUTO_DEPS}
 contents:
   - src: ${STAGE}/opt/fcp/nginx
     dst: /opt/fcp/nginx

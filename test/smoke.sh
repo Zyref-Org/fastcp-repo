@@ -149,8 +149,10 @@ case "${body}" in
   *)         bad "HTTPS detection broken (got: ${body})" ;;
 esac
 
-enc="$(curl -fsS -o /dev/null -w '%{header_json}' -H 'Host: test.local' -H 'Accept-Encoding: gzip' http://127.0.0.1/big.css 2>/dev/null | grep -o '"content-encoding":\["gzip"\]' || true)"
-[ -n "${enc}" ] && ok "nginx gzips proxied responses" || bad "gzip on proxied response missing"
+# -D- dumps response headers (portable; %{header_json} needs curl >= 7.83).
+curl -fsS -D- -o /dev/null -H 'Host: test.local' -H 'Accept-Encoding: gzip' http://127.0.0.1/big.css 2>/dev/null \
+  | grep -qi '^content-encoding: gzip' \
+  && ok "nginx gzips proxied responses" || bad "gzip on proxied response missing"
 
 echo
 echo "== result: ${pass} passed, ${fail} failed =="

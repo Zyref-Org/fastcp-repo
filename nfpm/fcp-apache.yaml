@@ -14,11 +14,9 @@ description: |
 vendor: FastCP
 homepage: https://fastcp.io
 license: Proprietary
+# Computed at package time from the built binaries (build/package.sh).
 depends:
-  - libc6
-  - libpcre2-8-0
-  - libapr1t64 | libapr1
-  - libaprutil1t64 | libaprutil1
+  - ${FCP_AUTO_DEPS}
 contents:
   - src: ${STAGE}/opt/fcp/apache
     dst: /opt/fcp/apache

@@ -18,26 +18,12 @@ description: |
 vendor: FastCP
 homepage: https://fastcp.io
 license: Proprietary
-# Runtime shared libraries. Alternations cover Ubuntu 24.04's time_t64 package
-# renames (t64 name first); verify names when adding a new codename.
+# Runtime shared-library deps are computed at package time from the built
+# binaries (see auto_deps in build/package.sh), so they are always correct
+# for the codename being built.
 depends:
   - fcp-php-common
-  - libc6
-  - libxml2
-  - libsqlite3-0
-  - libsystemd0
-  - libssl3t64 | libssl3
-  - libcurl4t64 | libcurl4
-  - libonig5
-  - libzip4t64 | libzip4
-  - libicu76 | libicu74 | libicu72 | libicu70
-  - libpng16-16t64 | libpng16-16
-  - libjpeg-turbo8t64 | libjpeg-turbo8
-  - libwebp7
-  - libfreetype6
-  - libxslt1.1
-  - libsodium23
-  - libgmp10
+  - ${FCP_AUTO_DEPS}
 contents:
   - src: ${STAGE}/opt/fcp/php/${PHP_VERSION}
     dst: /opt/fcp/php/${PHP_VERSION}

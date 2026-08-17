@@ -37,11 +37,38 @@ if ! command -v envsubst >/dev/null 2>&1; then
   exit 1
 fi
 
+# auto_deps computes the exact runtime package dependencies of the staged
+# binaries by resolving their linked shared libraries to dpkg package names.
+# Builds run on the target codename, so the names are correct per release —
+# no more hand-maintained (and codename-fragile) dependency lists.
+auto_deps() {
+  if ! command -v ldd >/dev/null 2>&1 || ! command -v dpkg >/dev/null 2>&1; then
+    echo "libc6" # local lint builds on non-Debian hosts
+    return
+  fi
+  local out
+  out=$(find "$@" -type f \( -perm -u+x -o -name '*.so*' \) 2>/dev/null \
+    | while read -r bin; do ldd "${bin}" 2>/dev/null | awk '/=> \//{print $3}'; done \
+    | sort -u \
+    | xargs -r dpkg -S 2>/dev/null \
+    | cut -d: -f1 | sort -u | paste -sd, - | sed 's/,/, /g')
+  echo "${out:-libc6}"
+}
+
+case "${recipe}" in
+  fcp-nginx)  FCP_AUTO_DEPS="$(auto_deps "${STAGE}/opt/fcp/nginx/sbin")" ;;
+  fcp-apache) FCP_AUTO_DEPS="$(auto_deps "${STAGE}/opt/fcp/apache/bin" "${STAGE}/opt/fcp/apache/modules")" ;;
+  fcp-php)    FCP_AUTO_DEPS="$(auto_deps "${STAGE}/opt/fcp/php/${PHP_VERSION}/bin" "${STAGE}/opt/fcp/php/${PHP_VERSION}/sbin")" ;;
+  *)          FCP_AUTO_DEPS="libc6" ;;
+esac
+export FCP_AUTO_DEPS
+log "computed deps for ${recipe}: ${FCP_AUTO_DEPS}"
+
 # nfpm does not expand env vars in its config, so render the ${VAR}
 # placeholders first. Only the listed variables are substituted.
 rendered="$(mktemp)"
 trap 'rm -f "${rendered}"' EXIT
-envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION} ${PHPCOMMON_VERSION}' \
+envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${FCP_AUTO_DEPS} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION} ${PHPCOMMON_VERSION}' \
   < "${config}" > "${rendered}"
 
 log "packaging ${recipe} -> ${DIST}"

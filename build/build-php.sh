@@ -117,12 +117,18 @@ pm.max_children = 2
 pm.process_idle_timeout = 10s
 CONF
 
-# OPcache is compiled in statically; tune it via a conf.d drop-in so users see
-# the pattern for adding their own extension/ini snippets.
-cat > "${STAGE}${prefix}/etc/conf.d/10-opcache.ini" <<'CONF'
+# OPcache tuning via a conf.d drop-in (also shows users the pattern for their
+# own extension/ini snippets). Older PHP branches build OPcache as a shared
+# zend extension that must be loaded explicitly; newer ones link it statically.
+opcache_load=""
+if ls "${STAGE}${prefix}"/lib/php/extensions/*/opcache.so >/dev/null 2>&1; then
+  opcache_load="zend_extension=opcache.so
+"
+fi
+cat > "${STAGE}${prefix}/etc/conf.d/10-opcache.ini" <<CONF
 ; FastCP defaults for OPcache. Drop additional .ini files in this directory to
 ; load extra extensions (extension=/zend_extension=) or override settings.
-opcache.enable = 1
+${opcache_load}opcache.enable = 1
 opcache.enable_cli = 0
 opcache.memory_consumption = 192
 opcache.interned_strings_buffer = 16
