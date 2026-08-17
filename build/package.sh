@@ -56,12 +56,26 @@ auto_deps() {
     printf 'auto_deps: unresolved shared libraries on the build host:\n%s\n' "${missing}" >&2
     exit 1
   fi
-  # ldd reports usr-merge alias paths (/lib/...) and ldconfig-created .so.N
-  # symlinks; dpkg's file database records /usr/lib/... real files, so a raw
-  # `dpkg -S` on ldd output matches nothing. realpath resolves both. Libraries
-  # staged under /opt/fcp ship inside our own packages and need no dependency.
+  # dpkg's file database and the runtime linker disagree about spellings:
+  # ldd prints usr-merge alias paths and ldconfig-made .so.N symlinks, while
+  # dpkg records real files — under /usr/lib on newer packages (noble's
+  # libzip4t64) but still under /lib on older ones (jammy's libc6, zlib1g).
+  # Query every plausible spelling: the ldd path, its realpath, and the
+  # /lib <-> /usr/lib alias of each; dpkg -S reports the hits and the misses
+  # are discarded. Libraries staged under /opt/fcp ship inside our own
+  # packages and need no dependency.
   out=$(printf '%s\n' "${links}" | awk '/=> \//{print $3}' | sort -u \
-    | while read -r lib; do realpath "${lib}" 2>/dev/null || true; done \
+    | while read -r lib; do
+        rp=$(realpath "${lib}" 2>/dev/null) || rp=""
+        for v in "${lib}" "${rp}"; do
+          [ -n "${v}" ] || continue
+          printf '%s\n' "${v}"
+          case "${v}" in
+            (/usr/lib/*) printf '%s\n' "${v#/usr}" ;;
+            (/lib/*) printf '/usr%s\n' "${v}" ;;
+          esac
+        done
+      done \
     | sort -u | grep -v '^/opt/fcp/' \
     | xargs -r dpkg -S 2>/dev/null \
     | cut -d: -f1 | sort -u | paste -sd, - | sed 's/,/, /g')
