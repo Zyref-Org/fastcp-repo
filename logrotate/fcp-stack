@@ -1,0 +1,9 @@
+/var/log/fcp/*.log /srv/users/*/log/*.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

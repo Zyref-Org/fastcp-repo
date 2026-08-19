@@ -17,7 +17,7 @@ description: |
   compiled in. Hardened defaults; not on the system PATH.
 vendor: FastCP
 homepage: https://fastcp.io
-license: Proprietary
+license: PHP-3.01
 # Runtime shared-library deps are computed at package time from the built
 # binaries (see auto_deps in build/package.sh), so they are always correct
 # for the codename being built.
@@ -31,3 +31,4 @@ contents:
 scripts:
   postinstall: ${REPO}/scripts/postinstall-php.sh
   preremove: ${REPO}/scripts/preremove-php.sh
+  postremove: ${REPO}/scripts/postremove-php.sh

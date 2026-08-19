@@ -23,7 +23,7 @@ on:
     inputs:
       php_versions:
         description: "Space-separated PHP versions"
-        default: "8.1 8.2 8.3 8.4 8.5"
+        default: "8.2 8.3 8.4 8.5"
   # Fired by the fastcp-agent repo after it uploads new agent .debs to the
   # bucket's incoming/agent/ prefix; republishing ingests them.
   repository_dispatch:
@@ -32,6 +32,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: package-repository-production
+  cancel-in-progress: false
+
 jobs:
   build:
     name: build ${{ matrix.codename }}/${{ matrix.arch }}
@@ -39,6 +43,10 @@ jobs:
     # nothing needs recompiling, so the whole build matrix is skipped.
     if: github.event_name != 'repository_dispatch'
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -47,21 +55,18 @@ jobs:
           - { codename: jammy, arch: arm64, runner: ubuntu-22.04-arm }
           - { codename: noble, arch: amd64, runner: ubuntu-24.04 }
           - { codename: noble, arch: arm64, runner: ubuntu-24.04-arm }
-          # Ubuntu 26.04 LTS; runners are in public preview.
-          - { codename: resolute, arch: amd64, runner: ubuntu-26.04 }
-          - { codename: resolute, arch: arm64, runner: ubuntu-26.04-arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install build dependencies
         run: bash build/install-build-deps.sh
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.26"
+          go-version: "1.26.6"
 
       - name: Install nfpm
-        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+        run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
 
       # Note: the compiled tree is deliberately not cached. Sources are
       # re-extracted every run (resetting mtimes), so a cache saves no compile
@@ -70,28 +75,70 @@ jobs:
 
       - name: Build the full stack
         env:
-          PHP_VERSIONS: ${{ github.event.inputs.php_versions || '8.1 8.2 8.3 8.4 8.5' }}
+          PHP_VERSIONS: ${{ github.event.inputs.php_versions || '8.2 8.3 8.4 8.5' }}
         run: |
-          export PATH="$(go env GOPATH)/bin:$PATH"
+          gopath=$(go env GOPATH)
+          export PATH="${gopath}/bin:$PATH"
+          export SOURCE_DATE_EPOCH
+          SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)
           bash build/build-all.sh
 
+      - name: Generate package SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: dist
+          output-file: dist/fastcp-${{ matrix.codename }}-${{ matrix.arch }}.spdx.json
+          upload-artifact: false
+
+      - name: Generate checksums
+        run: sha256sum dist/*.deb dist/*.spdx.json > dist/SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-path: |
+            dist/*.deb
+            dist/*.spdx.json
+            dist/SHA256SUMS
+
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: debs-${{ matrix.codename }}-${{ matrix.arch }}
-          path: dist/*.deb
+          path: |
+            dist/*.deb
+            dist/*.spdx.json
+            dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 7
+
+      - name: Inspect package metadata
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends lintian
+          for deb in dist/*.deb; do
+            dpkg-deb --info "$deb" >/dev/null
+            dpkg-deb --contents "$deb" >/dev/null
+            lintian --fail-on error "$deb"
+          done
+
+      - name: Install fcp-mysql on supported Ubuntu releases
+        if: matrix.codename == 'noble' && matrix.arch == 'amd64'
+        run: bash test/mysql-package-docker.sh dist/fcp-mysql_*.deb
 
   publish:
     name: sign and publish to R2
     needs: build
     # Runs after successful builds, and also when builds were skipped
     # (repository_dispatch): publish-ci.sh then reuses the published pool.
-    if: ${{ !cancelled() && !failure() }}
+    if: ${{ !cancelled() && !failure() && (github.event_name == 'repository_dispatch' || startsWith(github.ref, 'refs/tags/v')) }}
     runs-on: ubuntu-24.04
+    environment: production
+    permissions:
+      contents: read
+      attestations: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install aptly, rclone, gnupg
         run: |
@@ -100,7 +147,7 @@ jobs:
 
       - name: Download all built packages
         if: github.event_name != 'repository_dispatch'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
 
@@ -126,12 +173,24 @@ jobs:
           # rclone attempts CreateBucket and R2 replies 501 NotImplemented.
           no_check_bucket = true
           EOF
+          chmod 0600 ~/.config/rclone/rclone.conf
 
       - name: Publish and sync to R2
         env:
           ARTIFACTS_DIR: artifacts
-          CODENAMES: "jammy noble resolute"
+          CODENAMES: "jammy noble"
           FCP_GPG_EMAIL: ${{ secrets.FCP_GPG_EMAIL }}
           FCP_R2_REMOTE: r2
           FCP_R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          EXPECTED_AGENT_MANIFEST_SHA: ${{ github.event.client_payload.manifest_sha }}
+          DISPATCH_AGENT_REPOSITORY: ${{ github.event.client_payload.repository }}
+          DISPATCH_AGENT_REF: ${{ github.event.client_payload.ref }}
+          EXPECTED_AGENT_REPOSITORY: ${{ vars.AGENT_REPOSITORY }}
+          GH_TOKEN: ${{ github.token }}
+          FCP_SNAPSHOT_ID: ${{ github.run_id }}-${{ github.sha }}
         run: bash repo/publish-ci.sh
+
+      - name: Verify published noble repository
+        env:
+          FCP_REPO_URL: https://repo.fastcp.io
+        run: sudo -E bash test/smoke-from-repo.sh

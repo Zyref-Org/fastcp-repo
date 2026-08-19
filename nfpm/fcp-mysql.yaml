@@ -1,0 +1,41 @@
+name: fcp-mysql
+arch: all
+platform: linux
+version: ${MYSQL_CONFIG_VERSION}
+release: "1~${CODENAME}"
+section: database
+priority: optional
+maintainer: "FastCP <ops@fastcp.io>"
+description: |
+  FastCP-managed MySQL configuration: Ubuntu MySQL with conservative
+  memory-aware tuning, local-only networking, durable defaults and log rotation.
+vendor: FastCP
+homepage: https://fastcp.io
+license: Proprietary
+depends:
+  - mysql-server (>= 8.0)
+  - logrotate
+conflicts:
+  - mariadb-server
+contents:
+  - src: ${REPO}/mysql/90-fastcp.cnf
+    dst: /etc/mysql/mysql.conf.d/90-fastcp.cnf
+    type: config|noreplace
+    file_info:
+      mode: 0644
+  - src: ${REPO}/mysql/mysql-tune
+    dst: /usr/lib/fastcp/mysql-tune
+    file_info:
+      mode: 0755
+  - src: ${REPO}/mysql/fcp-mysql.logrotate
+    dst: /etc/logrotate.d/fcp-mysql
+    type: config|noreplace
+    file_info:
+      mode: 0644
+  - src: ${REPO}/systemd/fcp-mysql-tune.service
+    dst: /usr/lib/systemd/system/fcp-mysql-tune.service
+    file_info:
+      mode: 0644
+scripts:
+  postinstall: ${REPO}/scripts/postinstall-mysql.sh
+  postremove: ${REPO}/scripts/postremove-mysql.sh

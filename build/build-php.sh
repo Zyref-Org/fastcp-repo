@@ -86,7 +86,10 @@ daemonize = no
 include = ${prefix}/etc/pool.d/*.conf
 CONF
 
-# A secure, tuned default php.ini.
+# A secure, tuned default php.ini. Per-app pools written by the agent override
+# the parts that have to differ per app: session.save_path, upload_tmp_dir,
+# sys_temp_dir and open_basedir all point inside the app, so nothing here sets a
+# shared temp location that every customer on the server could read.
 cat > "${STAGE}${prefix}/etc/php.ini" <<'CONF'
 ; FastCP PHP build (https://fastcp.io)
 expose_php = Off
@@ -97,9 +100,25 @@ allow_url_include = Off
 memory_limit = 256M
 upload_max_filesize = 64M
 post_max_size = 64M
+; A runaway request holds a PHP-FPM worker, and enough of them take the site
+; down. The pool's request_terminate_timeout is the backstop for what this cannot
+; interrupt, such as a stalled network read.
+max_execution_time = 60
+; Stack traces of uncaught exceptions otherwise carry the arguments they were
+; called with, which is how database passwords end up in a log file.
+zend.exception_ignore_args = On
 date.timezone = UTC
 realpath_cache_size = 4096k
 realpath_cache_ttl = 120
+
+; Session hardening. use_strict_mode makes PHP reject a session id it never
+; issued, without which an attacker can fix a victim's session id in advance and
+; then use it once the victim logs in.
+session.use_strict_mode = 1
+session.cookie_httponly = 1
+session.cookie_samesite = Lax
+session.use_only_cookies = 1
+
 ; DB host "localhost" means the MySQL unix socket; point mysqlnd at Ubuntu's
 ; socket path (the compiled-in default is wrong for this layout).
 mysqli.default_socket = /var/run/mysqld/mysqld.sock

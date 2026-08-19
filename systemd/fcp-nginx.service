@@ -8,12 +8,27 @@ PIDFile=/run/fcp/nginx.pid
 RuntimeDirectory=fcp
 RuntimeDirectoryPreserve=yes
 LogsDirectory=fcp
+LogsDirectoryMode=0750
+RuntimeDirectoryMode=0755
 LimitNOFILE=65535
 ExecStartPre=/opt/fcp/nginx/sbin/nginx -t -c /etc/nginx-fcp/nginx.conf
 ExecStart=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf
 ExecReload=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf -s reload
 ExecStop=/opt/fcp/nginx/sbin/nginx -c /etc/nginx-fcp/nginx.conf -s quit
 Restart=on-failure
+
+# Sandboxing. nginx only reads site files and certificates and writes logs, so it
+# needs none of what is closed off here. ProtectSystem=full keeps /usr, /boot and
+# /etc read-only while leaving /srv (the sites) and /var/log/fcp writable.
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+# Safe here, unlike PHP-FPM: nginx executes nothing.
+NoNewPrivileges=yes
 
 [Install]
 WantedBy=multi-user.target

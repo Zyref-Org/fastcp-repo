@@ -1,6 +1,8 @@
-# Shared bits for all fcp-php<ver> packages: the templated PHP-FPM systemd
-# unit. Owned by one package because dpkg forbids the same path in multiple
-# packages (the per-version packages depend on this one).
+# Shared bits for all fcp-php<ver> packages: the templated PHP-FPM systemd unit
+# and the tmpfiles entry for the shared /run/fcp. Owned by one package because
+# dpkg forbids the same path in multiple packages (the per-version packages
+# depend on this one). nginx and Apache also use /run/fcp but keep their own
+# RuntimeDirectory=fcp, so they need no dependency on this package.
 name: fcp-php-common
 arch: all
 platform: linux
@@ -14,9 +16,15 @@ description: |
 vendor: FastCP
 homepage: https://fastcp.io
 license: Proprietary
-depends: []
+depends:
+  - logrotate
 contents:
   - src: ${REPO}/systemd/fcp-php-fpm@.service
-    dst: /etc/systemd/system/fcp-php-fpm@.service
+    dst: /usr/lib/systemd/system/fcp-php-fpm@.service
+  - src: ${REPO}/systemd/fcp-tmpfiles.conf
+    dst: /usr/lib/tmpfiles.d/fcp.conf
+  - src: ${REPO}/logrotate/fcp-stack
+    dst: /etc/logrotate.d/fcp-stack
+    type: config|noreplace
 scripts:
   postinstall: ${REPO}/scripts/postinstall-php-common.sh

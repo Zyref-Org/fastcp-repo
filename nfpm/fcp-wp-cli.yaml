@@ -11,7 +11,7 @@ description: |
   Packaged by FastCP.
 vendor: FastCP
 homepage: https://fastcp.io
-license: Proprietary
+license: MIT
 depends: []
 contents:
   - src: ${STAGE}/opt/fcp/bin/wp

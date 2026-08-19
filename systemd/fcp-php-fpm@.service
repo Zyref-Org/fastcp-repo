@@ -12,10 +12,33 @@ PIDFile=/run/fcp/php-fpm-%i.pid
 RuntimeDirectory=fcp
 RuntimeDirectoryPreserve=yes
 LogsDirectory=fcp
+LogsDirectoryMode=0750
+RuntimeDirectoryMode=0755
 LimitNOFILE=65535
 ExecStart=/opt/fcp/php/%i/sbin/php-fpm --nodaemonize --fpm-config /opt/fcp/php/%i/etc/php-fpm.conf
 ExecReload=/bin/kill -USR2 $MAINPID
 Restart=on-failure
+
+# Sandboxing. This service runs customer PHP, so the host is protected from the
+# code it executes; the per-app isolation (each pool as its own system user, with
+# open_basedir and private temp directories inside the app) is configured by the
+# agent in the pool files.
+#
+# A private /tmp is a second line behind open_basedir, which no longer admits
+# /tmp at all: sessions and uploads live inside each app, so nothing legitimate
+# needs the shared one.
+PrivateTmp=yes
+# ProtectSystem=full, not strict: /usr, /boot and /etc become read-only while
+# /opt (the PHP install and its pool files) and /srv (the sites) stay writable.
+ProtectSystem=full
+# FastCP homes are under /srv/users, so nothing here needs /home or /root.
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+# Deliberately no NoNewPrivileges: PHP's mail() delivers through a setgid
+# sendmail, which that would silently break.
 
 [Install]
 WantedBy=multi-user.target

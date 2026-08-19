@@ -14,7 +14,7 @@ description: |
   defaults. Independently built from upstream source into /opt/fcp/nginx.
 vendor: FastCP
 homepage: https://fastcp.io
-license: Proprietary
+license: BSD-2-Clause
 # Computed at package time from the built binary (build/package.sh).
 depends:
   - ${FCP_AUTO_DEPS}
@@ -28,7 +28,8 @@ contents:
     file_info:
       mode: 0755
   - src: ${REPO}/systemd/fcp-nginx.service
-    dst: /etc/systemd/system/fcp-nginx.service
+    dst: /usr/lib/systemd/system/fcp-nginx.service
 scripts:
   postinstall: ${REPO}/scripts/postinstall-nginx.sh
   preremove: ${REPO}/scripts/preremove-nginx.sh
+  postremove: ${REPO}/scripts/postremove-nginx.sh

@@ -1,0 +1,18 @@
+[Unit]
+Description=Generate conservative FastCP MySQL tuning
+After=local-fs.target
+Before=mysql.service
+ConditionPathExists=/usr/lib/fastcp/mysql-tune
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/fastcp/mysql-tune
+UMask=0022
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/etc/mysql/mysql.conf.d
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 # FastCP packaging
 
 From-source, hardened, FastCP-branded builds of the FastCP web stack (nginx,
-Apache, PHP-FPM 8.1–8.5, composer, wp-cli), published to our own signed APT
+Apache, PHP-FPM 8.2–8.5, composer, wp-cli, and `fcp-mysql`), published to our own signed APT
 repository. No ServerPilot binaries are used or redistributed.
 
 The `fastcp-agent` package is built and published by the agent's own repository;
@@ -12,12 +12,14 @@ this repo owns only the web stack and the APT repo publishing pipeline.
 - `/opt/fcp/nginx` — public web server (ports 80/443), reverse-proxies to Apache
 - `/opt/fcp/apache` — internal app server on `127.0.0.1:81`, PHP via FPM sockets,
   full `.htaccess` support behind the nginx proxy
-- `/opt/fcp/php/<ver>` — co-installable PHP-FPM builds (8.1–8.5 by default) with
+- `/opt/fcp/php/<ver>` — co-installable PHP-FPM builds (8.2–8.5 by default) with
   the common extension set (gd, intl, bcmath, soap, exif, sodium, …) compiled in
   and an `etc/conf.d/` drop-in dir for extra extension/ini snippets
 - `/etc/nginx-fcp`, `/etc/apache-fcp` — configs; per-app vhosts under `vhosts.d/`
   (no sites-available/sites-enabled)
 - `/run/fcp` — runtime sockets/pids (per-app FPM sockets `<user>.<app>.sock`)
+- `/etc/mysql/mysql.conf.d/90-fastcp.cnf` — local-only, durable MySQL defaults;
+  `91-fastcp-autotune.cnf` is generated from host/cgroup memory
 
 These paths and the service names (`fcp-nginx`, `fcp-apache`, `fcp-php<ver>-fpm`)
 are what the agent's executor writes to and reloads.
@@ -35,8 +37,8 @@ builds):
 build/install-build-deps.sh   # toolchain + -dev libraries
 build/bootstrap-tools.sh      # nfpm + aptly
 
-# Build and package the whole stack (nginx, apache, PHP 8.1-8.5, composer,
-# wp-cli, php-cli) into dist/:
+# Build and package the whole stack (nginx, apache, PHP 8.2-8.5, composer,
+# wp-cli, php-cli, MySQL profile) into dist/:
 build/build-all.sh
 
 # Or build individual components:
@@ -46,16 +48,8 @@ PHP_VERSION=8.3 PHP_FULL_VERSION=8.3.15 build/build-php.sh
 PHP_VERSION=8.3 PHP_FULL_VERSION=8.3.15 build/package.sh fcp-php
 ```
 
-Publish and serve the signed repository on the repo host (DNS for
-`repo.fastcp.io` must point at it):
-
-```bash
-FCP_REPO_DOMAIN=repo.fastcp.io repo/init-and-serve.sh
-```
-
-That generates the repo signing key (once), publishes `dist/*.deb` with aptly,
-exports the public key to `/<repo>/fastcp.gpg`, and serves it over HTTPS via
-Caddy. Clients (the installer) then add:
+Production publication is intentionally available only through the serialized,
+protected GitHub Actions workflow. Clients add:
 
 ```
 deb [signed-by=/usr/share/keyrings/fastcp.gpg] https://repo.fastcp.io noble main
@@ -72,13 +66,12 @@ that exact OS/arch (so packages link against the correct system libraries), then
 signs and syncs the APT repo to Cloudflare R2.
 
 - Trigger: push a `v*` tag, or run it manually (`workflow_dispatch`).
-- Build matrix: `jammy`/`noble`/`resolute` x `amd64`/`arm64` (the
-  `ubuntu-26.04` runners are in public preview). Each job runs
+- Build matrix: `jammy`/`noble` x `amd64`/`arm64`. Each job runs
   [install-build-deps.sh](build/install-build-deps.sh) then
   [build-all.sh](build/build-all.sh) and uploads `debs-<codename>-<arch>`.
 - Publish job imports the signing key, configures rclone for R2, and runs
   [publish-ci.sh](repo/publish-ci.sh) to build a multi-distribution
-  (`dists/jammy`, `dists/noble`, `dists/resolute`), multi-arch repo and
+  (`dists/jammy`, `dists/noble`), multi-arch repo and
   `rclone sync` it to R2.
 
 Required repository secrets:
@@ -91,19 +84,21 @@ Required repository secrets:
 | `R2_ENDPOINT` | `https://<accountid>.r2.cloudflarestorage.com` |
 | `R2_BUCKET` | target bucket (e.g. `fastcp-repo`) |
 
+Set protected repository variable `AGENT_REPOSITORY` to the exact
+`owner/fastcp-agent` source. Agent dispatches include an authenticated manifest
+digest, and publication verifies package identity, architecture, checksums, and
+GitHub build provenance before signing.
+
 Each run republishes the full current stack (latest-wins) and mirrors it to R2.
 Bind `repo.fastcp.io` to the bucket once as an R2 custom domain.
+Every run also writes an immutable, checksummed tree under
+`snapshots/<run>-<commit>/` and updates the no-cache `current-snapshot` pointer.
+The live pool retains prior package versions so an operator can restore a
+previous signed snapshot without rebuilding artifacts.
 
-### Hosting options
-
-The published repo is static files, so it can be served by any static origin:
-
-- **Own server (Caddy)**: `repo/init-and-serve.sh` publishes and serves
-  it over HTTPS on the repo host.
-- **Cloudflare R2 (no server)**: `repo/publish-r2.sh` signs locally and
-  `rclone sync`s the published tree to an R2 bucket; bind `repo.fastcp.io` to the
-  bucket as an R2 custom domain. Signing still happens on the build host with the
-  private GPG key; R2 only serves the signed, static tree.
+The only supported origin is the versioned R2 publication produced by
+`repo/publish-ci.sh`; alternate sync paths were removed because they could race
+or delete installer and rollback artifacts.
 
 ## Security posture
 

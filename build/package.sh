@@ -2,6 +2,7 @@
 # Build a .deb from a staged tree using nfpm. Usage: package.sh <recipe-name>
 # where recipe-name is one of: fcp-nginx fcp-apache fcp-php fcp-composer
 # fcp-wp-cli fcp-php-cli.
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 recipe="${1:?usage: package.sh <fcp-nginx|fcp-apache|fcp-php|fcp-composer|fcp-wp-cli|fcp-php-cli>}"
@@ -12,6 +13,7 @@ config="${REPO}/nfpm/${recipe}.yaml"
 # each Ubuntu release gets its own binaries; identical filenames with
 # different contents would collide in the shared aptly publish pool.
 if [ -z "${CODENAME:-}" ]; then
+  # shellcheck disable=SC1091
   CODENAME="$(. /etc/os-release 2>/dev/null && echo "${VERSION_CODENAME:-}")"
   CODENAME="${CODENAME:-local}"
 fi
@@ -27,6 +29,7 @@ export COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}"
 export WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}"
 export PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}"
 export PHPCOMMON_VERSION="${PHPCOMMON_VERSION:-1.0.0}"
+export MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.0}"
 
 if ! command -v nfpm >/dev/null 2>&1; then
   echo "nfpm not found; run build/bootstrap-tools.sh" >&2
@@ -108,9 +111,10 @@ esac
 # placeholders first. Only the listed variables are substituted.
 rendered="$(mktemp)"
 trap 'rm -f "${rendered}"' EXIT
-envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${FCP_AUTO_DEPS} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION} ${PHPCOMMON_VERSION}' \
+# shellcheck disable=SC2016 # envsubst needs literal ${VAR} names.
+envsubst '${ARCH} ${STAGE} ${REPO} ${CODENAME} ${FCP_AUTO_DEPS} ${PHP_VERSION} ${PHP_FULL_VERSION} ${NGINX_VERSION} ${APACHE_VERSION} ${COMPOSER_VERSION} ${WPCLI_VERSION} ${PHPCLI_VERSION} ${PHPCOMMON_VERSION} ${MYSQL_CONFIG_VERSION}' \
   < "${config}" > "${rendered}"
 
 log "packaging ${recipe} -> ${DIST}"
 nfpm package --config "${rendered}" --packager deb --target "${DIST}/"
-log "done: $(ls -1 "${DIST}"/*.deb 2>/dev/null | tail -n1)"
+log "done: $(find "${DIST}" -maxdepth 1 -name '*.deb' -print | sort | tail -n1)"

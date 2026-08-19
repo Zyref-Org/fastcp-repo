@@ -9,11 +9,25 @@ Environment=APACHE_RUN_DIR=/run/fcp
 RuntimeDirectory=fcp
 RuntimeDirectoryPreserve=yes
 LogsDirectory=fcp
+LogsDirectoryMode=0750
+RuntimeDirectoryMode=0755
 LimitNOFILE=65535
 ExecStart=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k start
 ExecReload=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k graceful
 ExecStop=/opt/fcp/apache/bin/apachectl -f /etc/apache-fcp/httpd.conf -k stop
 Restart=on-failure
+
+# Sandboxing. Apache serves static files and hands PHP to the per-app FPM socket
+# in /run/fcp, which a private /tmp does not affect; it never executes anything
+# itself, so no CGI or suid path is closed off by this.
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+NoNewPrivileges=yes
 
 [Install]
 WantedBy=multi-user.target

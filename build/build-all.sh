@@ -7,9 +7,10 @@
 # Versions and SHA256 pins below track the latest upstream releases; when
 # bumping a version, update its checksum from the upstream announcement.
 # The fastcp-agent package is built and published by the agent's own repo.
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-PHP_VERSIONS="${PHP_VERSIONS:-8.1 8.2 8.3 8.4 8.5}"
+PHP_VERSIONS="${PHP_VERSIONS:-8.2 8.3 8.4 8.5}"
 declare -A PHP_FULL_DEFAULT=(
   [8.1]="8.1.34"
   [8.2]="8.2.33"
@@ -65,6 +66,7 @@ log "staging tools (composer, wp-cli)"
 COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}" "${REPO}/build/package.sh" fcp-composer
 WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}" "${REPO}/build/package.sh" fcp-wp-cli
 PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}" "${REPO}/build/package.sh" fcp-php-cli
+MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.0}" "${REPO}/build/package.sh" fcp-mysql
 
 log "all packages built:"
 ls -1 "${DIST}"/*.deb 2>/dev/null || true

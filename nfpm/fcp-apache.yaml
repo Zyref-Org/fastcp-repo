@@ -13,7 +13,7 @@ description: |
   support. Built from upstream source into /opt/fcp/apache.
 vendor: FastCP
 homepage: https://fastcp.io
-license: Proprietary
+license: Apache-2.0
 # Computed at package time from the built binaries (build/package.sh).
 depends:
   - ${FCP_AUTO_DEPS}
@@ -27,7 +27,8 @@ contents:
     file_info:
       mode: 0755
   - src: ${REPO}/systemd/fcp-apache.service
-    dst: /etc/systemd/system/fcp-apache.service
+    dst: /usr/lib/systemd/system/fcp-apache.service
 scripts:
   postinstall: ${REPO}/scripts/postinstall-apache.sh
   preremove: ${REPO}/scripts/preremove-apache.sh
+  postremove: ${REPO}/scripts/postremove-apache.sh
