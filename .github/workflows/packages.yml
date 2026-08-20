@@ -33,6 +33,11 @@ on:
         type: boolean
         required: false
         default: false
+      mysql_only:
+        description: "Build and publish only the architecture-independent fcp-mysql package"
+        type: boolean
+        required: false
+        default: false
   # Fired by the fastcp-agent repo after it uploads new agent .debs to the
   # bucket's incoming/agent/ prefix; republishing ingests them.
   repository_dispatch:
@@ -53,7 +58,7 @@ jobs:
     if: >-
       github.event_name != 'repository_dispatch' &&
       (github.event_name != 'workflow_dispatch' ||
-       (!inputs.verify_only && inputs.artifact_run_id == ''))
+       (!inputs.verify_only && !inputs.mysql_only && inputs.artifact_run_id == ''))
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -147,9 +152,46 @@ jobs:
         if: matrix.codename == 'noble' && matrix.arch == 'amd64'
         run: bash test/mysql-package-docker.sh dist/fcp-mysql_*.deb
 
+  build-mysql:
+    name: build fcp-mysql ${{ matrix.codename }}
+    if: github.event_name == 'workflow_dispatch' && inputs.mysql_only
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        codename: [jammy, noble]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: "1.26.6"
+      - name: Install package tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends gettext-base
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Build fcp-mysql
+        env:
+          CODENAME: ${{ matrix.codename }}
+          MYSQL_CONFIG_VERSION: 1.0.1
+          SOURCE_DATE_EPOCH: "1704067200"
+        run: bash build/package.sh fcp-mysql
+      - name: Inspect package
+        run: |
+          dpkg-deb --info dist/fcp-mysql_*.deb >/dev/null
+          dpkg-deb --contents dist/fcp-mysql_*.deb >/dev/null
+      - name: Upload package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: debs-${{ matrix.codename }}-all
+          path: dist/fcp-mysql_*.deb
+          if-no-files-found: error
+          retention-days: 7
+
   publish:
     name: sign and publish to R2
-    needs: build
+    needs: [build, build-mysql]
     # Runs after successful builds, and also when builds were skipped
     # (repository_dispatch): publish-ci.sh then reuses the published pool.
     if: >-
@@ -157,7 +199,7 @@ jobs:
       (github.event_name == 'repository_dispatch' ||
        startsWith(github.ref, 'refs/tags/v') ||
        (github.event_name == 'workflow_dispatch' &&
-        (inputs.verify_only || inputs.artifact_run_id != '')))
+        (inputs.verify_only || inputs.mysql_only || inputs.artifact_run_id != '')))
     runs-on: ubuntu-24.04
     environment: production
     permissions:

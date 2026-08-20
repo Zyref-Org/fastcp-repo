@@ -66,7 +66,7 @@ log "staging tools (composer, wp-cli)"
 COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}" "${REPO}/build/package.sh" fcp-composer
 WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}" "${REPO}/build/package.sh" fcp-wp-cli
 PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}" "${REPO}/build/package.sh" fcp-php-cli
-MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.0}" "${REPO}/build/package.sh" fcp-mysql
+MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.1}" "${REPO}/build/package.sh" fcp-mysql
 
 log "all packages built:"
 ls -1 "${DIST}"/*.deb 2>/dev/null || true

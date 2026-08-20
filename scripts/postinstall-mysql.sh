@@ -12,12 +12,18 @@ mysqld --validate-config
 systemctl restart mysql.service
 systemctl is-active --quiet mysql.service
 
-# Equivalent safe subset of mysql_secure_installation. Ubuntu's root account
-# remains socket-authenticated; no shared root password is introduced.
-mysql --protocol=socket <<'SQL'
+# Equivalent safe subset of mysql_secure_installation when the existing server
+# grants root socket administration. Upgrades may already use password/auth
+# plugins managed outside FastCP; never fail package configuration or overwrite
+# those credentials.
+if mysql --protocol=socket --batch --skip-column-names -e 'SELECT 1' >/dev/null 2>&1; then
+  mysql --protocol=socket <<'SQL'
 DROP USER IF EXISTS ''@'localhost';
 DROP USER IF EXISTS ''@'%';
 DROP DATABASE IF EXISTS test;
 DELETE FROM mysql.db WHERE Db='test' OR Db LIKE 'test\_%';
 FLUSH PRIVILEGES;
 SQL
+else
+  echo "fcp-mysql: existing root authentication prevented optional account cleanup; configuration is installed" >&2
+fi

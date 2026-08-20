@@ -29,7 +29,7 @@ export COMPOSER_VERSION="${COMPOSER_VERSION:-2.10.2}"
 export WPCLI_VERSION="${WPCLI_VERSION:-2.12.0}"
 export PHPCLI_VERSION="${PHPCLI_VERSION:-1.0.0}"
 export PHPCOMMON_VERSION="${PHPCOMMON_VERSION:-1.0.0}"
-export MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.0}"
+export MYSQL_CONFIG_VERSION="${MYSQL_CONFIG_VERSION:-1.0.1}"
 
 if ! command -v nfpm >/dev/null 2>&1; then
   echo "nfpm not found; run build/bootstrap-tools.sh" >&2

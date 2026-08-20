@@ -87,7 +87,7 @@ fi
 
 (cd "${ROOT}/repo-packaging" && bash test/mysql-tune.sh)
 if command -v nfpm >/dev/null 2>&1; then
-  (cd "${ROOT}/repo-packaging" && CODENAME=noble MYSQL_CONFIG_VERSION=1.0.0 \
+  (cd "${ROOT}/repo-packaging" && CODENAME=noble MYSQL_CONFIG_VERSION=1.0.1 \
     bash build/package.sh fcp-mysql)
   (cd "${ROOT}/repo-packaging" && bash test/package-reproducibility.sh)
   if command -v docker >/dev/null 2>&1; then

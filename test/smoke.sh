@@ -46,10 +46,13 @@ for dir in /opt/fcp/php/*/; do
 done
 check "service mysql active" systemctl is-active --quiet mysql
 check "FastCP MySQL config validates" mysqld --validate-config
-mysql -NBe "SELECT @@bind_address, @@local_infile, @@innodb_buffer_pool_size" \
-  >/tmp/fastcp-mysql-smoke 2>/dev/null \
-  && grep -q '^127.0.0.1' /tmp/fastcp-mysql-smoke \
-  && ok "MySQL is local-only and queryable" \
+grep -Eq '^[[:space:]]*bind-address[[:space:]]*=[[:space:]]*127\.0\.0\.1' \
+  /etc/mysql/mysql.conf.d/90-fastcp.cnf \
+  && grep -Eq '^[[:space:]]*local_infile[[:space:]]*=[[:space:]]*OFF' \
+    /etc/mysql/mysql.conf.d/90-fastcp.cnf \
+  && grep -Eq '^[[:space:]]*innodb_buffer_pool_size[[:space:]]*=' \
+    /etc/mysql/mysql.conf.d/91-fastcp-autotune.cnf \
+  && ok "MySQL FastCP profile is active" \
   || bad "MySQL FastCP profile is not active"
 
 echo "== branding =="

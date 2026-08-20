@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-DEB="${1:-dist/fcp-mysql_1.0.0-1~noble_all.deb}"
+DEB="${1:-dist/fcp-mysql_1.0.1-1~noble_all.deb}"
 [ -f "${DEB}" ] || { echo "missing ${DEB}" >&2; exit 1; }
 
 for ubuntu in 22.04 24.04; do
@@ -30,6 +30,10 @@ EOF
     apt-get purge -y -qq fcp-mysql
     test ! -e /etc/mysql/mysql.conf.d/91-fastcp-autotune.cnf
     systemctl is-active --quiet mysql
+    mysql -NBe "ALTER USER '\''root'\''@'\''localhost'\'' IDENTIFIED WITH caching_sha2_password BY '\''fastcp-ci-root-password'\''"
+    dpkg -i /tmp/fcp-mysql.deb
+    dpkg-query -W -f="\${Status}" fcp-mysql | grep -q "install ok installed"
+    MYSQL_PWD=fastcp-ci-root-password mysqladmin --protocol=socket -uroot ping >/dev/null
   '
   cleanup
   trap - EXIT
