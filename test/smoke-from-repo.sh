@@ -6,6 +6,7 @@
 #   FCP_REPO_URL   default https://repo.fastcp.io
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_URL="${FCP_REPO_URL:-https://repo.fastcp.io}"
 export DEBIAN_FRONTEND=noninteractive
 
@@ -27,4 +28,4 @@ apt-get download fcp-nginx fcp-apache fcp-php-common \
   fcp-composer fcp-wp-cli fcp-php-cli fcp-mysql
 ls -1 "${DIST_DIR}"
 
-DIST="${DIST_DIR}" exec bash "$(dirname "$0")/smoke.sh"
+DIST="${DIST_DIR}" exec bash "${SCRIPT_DIR}/smoke.sh"
