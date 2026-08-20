@@ -103,7 +103,9 @@ jobs:
             > dist/provenance.json
 
       - name: Generate checksums
-        run: sha256sum dist/*.deb dist/*.spdx.json dist/provenance.json > dist/SHA256SUMS
+        run: |
+          cd dist
+          sha256sum -- *.deb *.spdx.json provenance.json > SHA256SUMS
 
       - name: Upload packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

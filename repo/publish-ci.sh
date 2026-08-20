@@ -28,13 +28,20 @@ ARCHES="${FCP_ARCHES:-amd64,arm64}"
 
 log() { printf '\033[1;35m[publish-ci]\033[0m %s\n' "$*"; }
 
+verify_checksums() {
+  local directory="$1" manifest="$2"
+  # Releases before the portable provenance fix wrote paths as dist/<file>,
+  # while artifact/R2 downloads place those files at the directory root.
+  (cd "${directory}" && sed 's#  dist/#  #' "${manifest}" | sha256sum -c -)
+}
+
 for tool in aptly gpg jq rclone; do
   command -v "$tool" >/dev/null 2>&1 || { echo "missing $tool" >&2; exit 1; }
 done
 
 while IFS= read -r manifest; do
   [ -n "${manifest}" ] || continue
-  (cd "$(dirname "${manifest}")" && sha256sum -c "$(basename "${manifest}")")
+  verify_checksums "$(dirname "${manifest}")" "$(basename "${manifest}")"
 done < <(find "${ARTIFACTS_DIR}" -mindepth 2 -name SHA256SUMS -type f 2>/dev/null)
 
 KEY_ID="$(gpg --list-secret-keys --with-colons "${KEY_EMAIL}" | awk -F: '/^sec:/{print $5; exit}')"
@@ -81,7 +88,7 @@ fi
 agent_debs=$(find "${AGENT_DIR}" -name '*.deb' 2>/dev/null)
 if [ -n "${agent_debs}" ]; then
   [ -f "${AGENT_DIR}/SHA256SUMS" ] || { echo "agent SHA256SUMS missing" >&2; exit 1; }
-  (cd "${AGENT_DIR}" && sha256sum -c SHA256SUMS)
+  verify_checksums "${AGENT_DIR}" SHA256SUMS
   while IFS= read -r deb; do
     [ "$(dpkg-deb -f "${deb}" Package)" = "fastcp-agent" ] || {
       echo "unexpected incoming package: ${deb}" >&2; exit 1;
