@@ -28,7 +28,7 @@ ARCHES="${FCP_ARCHES:-amd64,arm64}"
 
 log() { printf '\033[1;35m[publish-ci]\033[0m %s\n' "$*"; }
 
-for tool in aptly gpg rclone; do
+for tool in aptly gpg jq rclone; do
   command -v "$tool" >/dev/null 2>&1 || { echo "missing $tool" >&2; exit 1; }
 done
 
@@ -47,7 +47,6 @@ log "signing key ${KEY_ID}"
 AGENT_DIR="${ARTIFACTS_DIR}/agent-incoming"
 mkdir -p "${AGENT_DIR}"
 if [ -n "${EXPECTED_AGENT_MANIFEST_SHA:-}" ]; then
-  command -v gh >/dev/null 2>&1 || { echo "missing gh for provenance verification" >&2; exit 1; }
   [ -n "${EXPECTED_AGENT_REPOSITORY:-}" ] &&
     [ "${DISPATCH_AGENT_REPOSITORY:-}" = "${EXPECTED_AGENT_REPOSITORY}" ] || {
       echo "agent dispatch came from an untrusted repository" >&2; exit 1;
@@ -66,6 +65,16 @@ if [ -n "${EXPECTED_AGENT_MANIFEST_SHA:-}" ]; then
   [ "${actual_manifest_sha}" = "${EXPECTED_AGENT_MANIFEST_SHA}" ] || {
     echo "incoming agent manifest does not match authenticated dispatch" >&2; exit 1;
   }
+  jq -e \
+    --arg repository "${EXPECTED_AGENT_REPOSITORY}" \
+    --arg ref "${DISPATCH_AGENT_REF}" \
+    --arg commit "${DISPATCH_AGENT_COMMIT}" \
+    --arg run_id "${DISPATCH_AGENT_RUN_ID}" \
+    '.repository == $repository and .ref == $ref and .commit == $commit and
+     .run_id == $run_id and .runner == "github-hosted"' \
+    "${AGENT_DIR}/provenance.json" >/dev/null || {
+      echo "incoming agent provenance does not match authenticated dispatch" >&2; exit 1;
+    }
 else
   log "no authenticated agent dispatch; ignoring incoming/agent"
 fi
@@ -84,11 +93,6 @@ if [ -n "${agent_debs}" ]; then
     case "$(dpkg-deb -f "${deb}" Architecture)" in amd64|arm64) ;; *)
       echo "unexpected agent architecture: ${deb}" >&2; exit 1 ;;
     esac
-    gh attestation verify "${deb}" \
-      --repo "${EXPECTED_AGENT_REPOSITORY}" \
-      --signer-workflow "${EXPECTED_AGENT_REPOSITORY}/.github/workflows/agent.yml" \
-      --source-ref "${DISPATCH_AGENT_REF}" \
-      --deny-self-hosted-runners >/dev/null
   done <<EOF
 ${agent_debs}
 EOF

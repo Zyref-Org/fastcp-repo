@@ -84,10 +84,10 @@ Required repository secrets:
 | `R2_ENDPOINT` | `https://<accountid>.r2.cloudflarestorage.com` |
 | `R2_BUCKET` | target bucket (e.g. `fastcp-repo`) |
 
-Set protected repository variable `AGENT_REPOSITORY` to the exact
-`owner/fastcp-agent` source. Agent dispatches include an authenticated manifest
-digest, and publication verifies package identity, architecture, checksums, and
-GitHub build provenance before signing.
+Agent dispatches are restricted to `Zyref-Org/fastcp-agent` version tags and
+include an authenticated manifest digest. Publication verifies package
+identity, architecture, checksums, and the matching workflow provenance
+manifest before signing.
 
 Each run republishes the full current stack (latest-wins) and mirrors it to R2.
 Bind `repo.fastcp.io` to the bucket once as an R2 custom domain.

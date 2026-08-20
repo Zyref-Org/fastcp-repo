@@ -45,8 +45,6 @@ jobs:
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
-      id-token: write
-      attestations: write
     strategy:
       fail-fast: false
       matrix:
@@ -90,16 +88,22 @@ jobs:
           output-file: dist/fastcp-${{ matrix.codename }}-${{ matrix.arch }}.spdx.json
           upload-artifact: false
 
-      - name: Generate checksums
-        run: sha256sum dist/*.deb dist/*.spdx.json > dist/SHA256SUMS
+      - name: Record build provenance
+        run: |
+          jq -n \
+            --arg repository "${GITHUB_REPOSITORY}" \
+            --arg ref "${GITHUB_REF}" \
+            --arg commit "${GITHUB_SHA}" \
+            --arg run_id "${GITHUB_RUN_ID}" \
+            --arg workflow "${GITHUB_WORKFLOW}" \
+            --arg codename "${{ matrix.codename }}" \
+            --arg architecture "${{ matrix.arch }}" \
+            '{repository:$repository,ref:$ref,commit:$commit,run_id:$run_id,workflow:$workflow,
+              runner:"github-hosted",codename:$codename,architecture:$architecture}' \
+            > dist/provenance.json
 
-      - name: Attest build provenance
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
-        with:
-          subject-path: |
-            dist/*.deb
-            dist/*.spdx.json
-            dist/SHA256SUMS
+      - name: Generate checksums
+        run: sha256sum dist/*.deb dist/*.spdx.json dist/provenance.json > dist/SHA256SUMS
 
       - name: Upload packages
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -108,6 +112,7 @@ jobs:
           path: |
             dist/*.deb
             dist/*.spdx.json
+            dist/provenance.json
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 7
@@ -136,14 +141,13 @@ jobs:
     environment: production
     permissions:
       contents: read
-      attestations: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install aptly, rclone, gnupg
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y aptly rclone gnupg
+          sudo apt-get install -y aptly rclone gnupg jq
 
       - name: Download all built packages
         if: github.event_name != 'repository_dispatch'
@@ -185,8 +189,9 @@ jobs:
           EXPECTED_AGENT_MANIFEST_SHA: ${{ github.event.client_payload.manifest_sha }}
           DISPATCH_AGENT_REPOSITORY: ${{ github.event.client_payload.repository }}
           DISPATCH_AGENT_REF: ${{ github.event.client_payload.ref }}
-          EXPECTED_AGENT_REPOSITORY: ${{ vars.AGENT_REPOSITORY }}
-          GH_TOKEN: ${{ github.token }}
+          DISPATCH_AGENT_COMMIT: ${{ github.event.client_payload.commit }}
+          DISPATCH_AGENT_RUN_ID: ${{ github.event.client_payload.run_id }}
+          EXPECTED_AGENT_REPOSITORY: Zyref-Org/fastcp-agent
           FCP_SNAPSHOT_ID: ${{ github.run_id }}-${{ github.sha }}
         run: bash repo/publish-ci.sh
 
