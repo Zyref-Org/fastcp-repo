@@ -27,9 +27,14 @@ check() { # check <description> <command...>
 }
 
 echo "== installing packages from ${DIST} =="
-apt-get install -y --reinstall "${DIST}"/*.deb >/tmp/smoke-install.log 2>&1 \
-  && ok "apt install of all packages (deps resolved)" \
-  || { bad "apt install failed"; tail -20 /tmp/smoke-install.log; }
+if apt-get install -y --reinstall "${DIST}"/*.deb >/tmp/smoke-install.log 2>&1; then
+  ok "apt install of all packages (deps resolved)"
+else
+  bad "apt install failed"
+  tail -100 /tmp/smoke-install.log
+  systemctl status fcp-mysql-tune.service mysql.service --no-pager || true
+  journalctl -u fcp-mysql-tune.service -u mysql.service -n 100 --no-pager || true
+fi
 
 echo "== services =="
 for svc in fcp-nginx fcp-apache; do
